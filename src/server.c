@@ -1,9 +1,11 @@
 #include "server.h"
+#include <common.h>
 #include <stdio.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -12,6 +14,7 @@ fd activeClients[MAX_CONNECTIONS];
 pthread_mutex_t clientsMutex = PTHREAD_MUTEX_INITIALIZER;
 
 int main() {
+    signal(SIGINT, handleExit); // gracefully handle Ctrl+C
     const fd s = socket(AF_INET, SOCK_STREAM, 0);
 
     if (s < 0) {
@@ -51,6 +54,12 @@ int main() {
             continue;
         }
 
+        if (activeClientsCount >= MAX_CONNECTIONS) {
+            printf("Maximum number of clients reached\n");
+            close(client_fd);
+            continue;
+        }
+
         pthread_t client_thread;
 
         fd *arg = malloc(sizeof(client_fd));
@@ -59,14 +68,12 @@ int main() {
             continue;
         }
         *arg = client_fd;
-        const int err = pthread_create(&client_thread, NULL, handleClient, arg);
+        const int err = pthread_create(&client_thread, NULL, threadHandleClient, arg);
         if (err) {
             printf("An error occurred: %d\n", err);
-            continue;
+            free(arg);
         }
     }
-
-    return 0;
 }
 
 void removeClient(const fd client_fd) {
@@ -79,7 +86,7 @@ void removeClient(const fd client_fd) {
     }
     if (index != -1) {
         for (int i = index; i < activeClientsCount - 1; i++) {
-            activeClients[i] = activeClients[i - 1];
+            activeClients[i] = activeClients[i + 1];
         }
         activeClientsCount--;
     }
@@ -92,7 +99,7 @@ void broadcastMessage(const char *message) {
 }
 
 void *threadHandleClient(void *arg) {
-    int client_fd = *(fd *) arg;
+    const int client_fd = *(fd *) arg;
     free(arg);
     handleClient(client_fd);
     return NULL;
@@ -104,11 +111,10 @@ void handleClient(const fd client_fd) {
     pthread_mutex_unlock(&clientsMutex);
 
     // another scope to avoid using the same variable name
-    char message[256];
+    char message[BUFFER_SIZE * 2], buf[BUFFER_SIZE];
     snprintf(message, 255, "Client %d has joined the chat\n", client_fd);
     broadcastMessage(message);
 
-    char buf[BUFFER_SIZE];
     while (1) {
         const int bytes_read = recv(client_fd, buf, BUFFER_SIZE, 0);
         if (bytes_read <= 0) {
@@ -122,8 +128,9 @@ void handleClient(const fd client_fd) {
         }
 
         buf[bytes_read] = '\0';
-        printf("Client %d: %s\n", client_fd, buf);
-        broadcastMessage(buf);
+        snprintf(message, BUFFER_SIZE * 2, "Client %d: %s", client_fd, buf);
+        printf("Client %d: %s\n", client_fd, message);
+        broadcastMessage(message);
     }
 
     pthread_mutex_lock(&clientsMutex);
@@ -138,8 +145,8 @@ void handleClient(const fd client_fd) {
     close(client_fd);
 }
 
-// TODO: Remember to disconnect the client sockets before exiting the program
 void handleExit() {
+    broadcastMessage("The server is shutting down\n");
     exit(0);
 }
 
@@ -149,7 +156,7 @@ void handleHelp() {
     printf("  /quit - exit the program\n");
 }
 
-void askForInput() {
+void *askForInput(void *arg) {
     while (1) {
         char input[256];
         fgets(input, 255, stdin);
