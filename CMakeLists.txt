@@ -16,7 +16,7 @@ set(CLIENT_RESOURCES
     src/utils.c
 )
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/build)
 
 add_executable(server ${SERVER_RESOURCES})
 add_executable(client ${CLIENT_RESOURCES})
