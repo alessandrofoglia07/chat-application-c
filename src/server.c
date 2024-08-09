@@ -7,8 +7,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+int activeClientsCount = 0;
+fd activeClients[MAX_CONNECTIONS];
+pthread_mutex_t clientsMutex = PTHREAD_MUTEX_INITIALIZER;
+
 int main() {
-    const int s = socket(AF_INET, SOCK_STREAM, 0);
+    const fd s = socket(AF_INET, SOCK_STREAM, 0);
 
     if (s < 0) {
         perror("socket");
@@ -34,14 +38,14 @@ int main() {
     }
 
     pthread_t serverInputThread;
-    const int serverInputThreadError = pthread_create(&serverInputThread, NULL, ask_for_input, NULL);
+    const int serverInputThreadError = pthread_create(&serverInputThread, NULL, askForInput, NULL);
     if (serverInputThreadError) {
         printf("An error occurred: %d\n", serverInputThreadError);
         return 1;
     }
 
     while (1) {
-        const int client_fd = accept(s, NULL, NULL);
+        const fd client_fd = accept(s, NULL, NULL);
         if (client_fd < 0) {
             perror("accept");
             continue;
@@ -49,7 +53,7 @@ int main() {
 
         pthread_t client_thread;
 
-        int *arg = malloc(sizeof(client_fd));
+        fd *arg = malloc(sizeof(client_fd));
         if (arg == NULL) {
             perror("Failed to allocate memory for client_fd");
             continue;
@@ -65,14 +69,73 @@ int main() {
     return 0;
 }
 
+void removeClient(const fd client_fd) {
+    int index = -1;
+    for (int i = 0; i < activeClientsCount; i++) {
+        if (activeClients[i] == client_fd) {
+            index = i;
+            break;
+        }
+    }
+    if (index != -1) {
+        for (int i = index; i < activeClientsCount - 1; i++) {
+            activeClients[i] = activeClients[i - 1];
+        }
+        activeClientsCount--;
+    }
+}
+
+void broadcastMessage(const char *message) {
+    for (int i = 0; i < activeClientsCount; i++) {
+        send(activeClients[i], message, sizeof(message), 0);
+    }
+}
+
 void *threadHandleClient(void *arg) {
-    int client_fd = *(int *) arg;
+    int client_fd = *(fd *) arg;
     free(arg);
     handleClient(client_fd);
     return NULL;
 }
 
-void handleClient(const int client_fd) {
+void handleClient(const fd client_fd) {
+    pthread_mutex_lock(&clientsMutex);
+    activeClients[activeClientsCount++] = client_fd;
+    pthread_mutex_unlock(&clientsMutex);
+
+    // another scope to avoid using the same variable name
+    char message[256];
+    snprintf(message, 255, "Client %d has joined the chat\n", client_fd);
+    broadcastMessage(message);
+
+    char buf[BUFFER_SIZE];
+    while (1) {
+        const int bytes_read = recv(client_fd, buf, BUFFER_SIZE, 0);
+        if (bytes_read <= 0) {
+            if (bytes_read == 0) {
+                // client disconnected
+                printf("Client %d has disconnected\n", client_fd);
+            } else {
+                perror("recv");
+            }
+            break;
+        }
+
+        buf[bytes_read] = '\0';
+        printf("Client %d: %s\n", client_fd, buf);
+        broadcastMessage(buf);
+    }
+
+    pthread_mutex_lock(&clientsMutex);
+    // remove the client from the list
+    removeClient(client_fd);
+    pthread_mutex_unlock(&clientsMutex);
+
+    // notify other clients that this client has left
+    snprintf(message, 255, "Client %d has left the chat\n", client_fd);
+    broadcastMessage(message);
+
+    close(client_fd);
 }
 
 // TODO: Remember to disconnect the client sockets before exiting the program
@@ -86,7 +149,7 @@ void handleHelp() {
     printf("  /quit - exit the program\n");
 }
 
-void ask_for_input() {
+void askForInput() {
     while (1) {
         char input[256];
         fgets(input, 255, stdin);

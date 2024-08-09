@@ -5,7 +5,9 @@
 #define MAX_CONNECTIONS 10
 #define BUFFER_SIZE 256
 
-void ask_for_input();
+typedef int fd;
+
+void askForInput();
 
 void handleExit();
 
@@ -14,5 +16,7 @@ void handleHelp();
 void *threadHandleClient(void *arg);
 
 void handleClient();
+
+void broadcastMessage(const char *message);
 
 #endif //SERVER_H
