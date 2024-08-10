@@ -12,6 +12,8 @@ void *threadHandleClient(void *arg);
 
 void handleClient(const fd client_fd);
 
-void broadcastMessage(const char *message);
+void broadcastMessage(const char *message)
+
+void broadcastMessageExcludeSender(const char *message, const fd client_fd);
 
 #endif //SERVER_H

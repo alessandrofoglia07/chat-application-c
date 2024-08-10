@@ -28,6 +28,14 @@ int main() {
         INADDR_ANY
     };
 
+    // Set socket options
+    const int optval = 1;
+    if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0) {
+        perror("Setsockopt failed");
+        close(s);
+        exit(EXIT_FAILURE);
+    }
+
     if (bind(s, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
         perror("bind");
         close(s);
@@ -40,7 +48,7 @@ int main() {
         return 1;
     }
 
-    printf("Server listening at port %d", PORT);
+    printf("Server listening at port %d\n", PORT);
 
     pthread_t serverInputThread;
     const int serverInputThreadError = pthread_create(&serverInputThread, NULL, askForInput, NULL);
@@ -96,7 +104,16 @@ void removeClient(const fd client_fd) {
 
 void broadcastMessage(const char *message) {
     for (int i = 0; i < activeClientsCount; i++) {
-        send(activeClients[i], message, sizeof(message), 0);
+        send(activeClients[i], message, strlen(message), 0);
+    }
+}
+
+void broadcastMessageExcludeSender(const char *message, const fd client_fd) {
+    for (int i = 0; i < activeClientsCount; i++) {
+        if (activeClients[i] == client_fd) {
+            continue;
+        }
+        send(activeClients[i], message, strlen(message), 0);
     }
 }
 
@@ -114,15 +131,16 @@ void handleClient(const fd client_fd) {
 
     // another scope to avoid using the same variable name
     char message[BUFFER_SIZE * 2], buf[BUFFER_SIZE];
-    snprintf(message, 255, "Client %d has joined the chat\n", client_fd);
-    broadcastMessage(message);
+    snprintf(message, BUFFER_SIZE * 2, "Server: Client %d has joined the chat", client_fd);
+    printf("Client %d has joined the chat.\n", client_fd);
+    broadcastMessageExcludeSender(message, client_fd);
 
     while (1) {
         const int bytes_read = recv(client_fd, buf, BUFFER_SIZE, 0);
         if (bytes_read <= 0) {
             if (bytes_read == 0) {
                 // client disconnected
-                printf("Client %d has disconnected\n", client_fd);
+                printf("Client %d has left the chat.\n", client_fd);
             } else {
                 perror("recv");
             }
@@ -131,8 +149,8 @@ void handleClient(const fd client_fd) {
 
         buf[bytes_read] = '\0';
         snprintf(message, BUFFER_SIZE * 2, "Client %d: %s", client_fd, buf);
-        printf("Client %d: %s\n", client_fd, message);
-        broadcastMessage(message);
+        printf("%s\n", message);
+        broadcastMessageExcludeSender(message, client_fd);
     }
 
     pthread_mutex_lock(&clientsMutex);
@@ -141,14 +159,14 @@ void handleClient(const fd client_fd) {
     pthread_mutex_unlock(&clientsMutex);
 
     // notify other clients that this client has left
-    snprintf(message, 255, "Client %d has left the chat\n", client_fd);
-    broadcastMessage(message);
+    snprintf(message, 255, "Server: Client %d has left the chat", client_fd);
+    broadcastMessageExcludeSender(message, client_fd);
 
     close(client_fd);
 }
 
 void handleExit() {
-    broadcastMessage("The server is shutting down\n");
+    broadcastMessage("Server: The server is shutting down\n");
     exit(0);
 }
 

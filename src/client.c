@@ -25,26 +25,28 @@ int main() {
 
     fd *arg = malloc(sizeof(clientSocket));
     if (arg == NULL) {
-        perror("Failed to allocate memory for client_fd");
+        perror("-- Failed to allocate memory for client_fd");
         return 1;
     }
     *arg = clientSocket;
 
     int err = pthread_create(&sendThread, NULL, sendMessages, arg);
     if (err) {
-        printf("An error occurred: %d\n", err);
+        printf("-- An error occurred: %d\n", err);
         free(arg);
         return 1;
     }
     err = pthread_create(&recvThread, NULL, recvMessages, arg);
     if (err) {
-        printf("An error occurred: %d\n", err);
+        printf("-- An error occurred: %d\n", err);
         free(arg);
         return 1;
     }
 
     pthread_join(sendThread, NULL);
     pthread_join(recvThread, NULL);
+
+    free(arg);
 
     close(clientSocket);
 
@@ -61,22 +63,17 @@ void *sendMessages(void *socketDesc) {
         fgets(message, BUFFER_SIZE, stdin);
         message[strcspn(message, "\n")] = '\0';
 
+        // exit the loop if the user types "exit"
+        if (strcmp(message, "exit") == 0) {
+            printf("-- Exiting...\n");
+            exit(0);
+        }
+
         // send message to server
         if (send(s, message, strlen(message), 0) < 0) {
-            printf("Failed to send message\n");
-            continue;
-        }
-
-        // exit the loop if the user types "exit"
-        if (strcmp(message, "exit\n") == 0) {
-            printf("Exiting...\n");
-            break;
+            printf("-- Failed to send message\n");
         }
     }
-
-    free(socketDesc);
-    close(s);
-    return NULL;
 }
 
 void *recvMessages(void *socketDesc) {
@@ -87,7 +84,7 @@ void *recvMessages(void *socketDesc) {
         // Receive message from server
         const int bytesRead = recv(s, buf, BUFFER_SIZE, 0);
         if (bytesRead <= 0) {
-            printf("Server disconnected.\n");
+            printf("-- Server disconnected.\n");
             break;
         }
 
@@ -96,7 +93,5 @@ void *recvMessages(void *socketDesc) {
         printf("%s\n", buf);
     }
 
-    free(socketDesc);
-    close(s);
     return NULL;
 }
