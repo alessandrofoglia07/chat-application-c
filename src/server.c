@@ -40,6 +40,8 @@ int main() {
         return 1;
     }
 
+    printf("Server listening at port %d", PORT);
+
     pthread_t serverInputThread;
     const int serverInputThreadError = pthread_create(&serverInputThread, NULL, askForInput, NULL);
     if (serverInputThreadError) {

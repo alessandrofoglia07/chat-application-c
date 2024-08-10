@@ -7,13 +7,11 @@ set(CMAKE_C_STANDARD_REQUIRED True)
 include_directories(include)
 
 set(SERVER_RESOURCES
-    src/server.c
-    src/utils.c
+        src/server.c
 )
 
 set(CLIENT_RESOURCES
-    src/client.c
-    src/utils.c
+        src/client.c
 )
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/build)

@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 int main() {
@@ -48,4 +49,54 @@ int main() {
     close(clientSocket);
 
     return 0;
+}
+
+void *sendMessages(void *socketDesc) {
+    const fd s = *(fd *) socketDesc;
+
+    while (1) {
+        char message[BUFFER_SIZE];
+
+        // read message from user
+        fgets(message, BUFFER_SIZE, stdin);
+        message[strcspn(message, "\n")] = '\0';
+
+        // send message to server
+        if (send(s, message, strlen(message), 0) < 0) {
+            printf("Failed to send message\n");
+            continue;
+        }
+
+        // exit the loop if the user types "exit"
+        if (strcmp(message, "exit\n") == 0) {
+            printf("Exiting...\n");
+            break;
+        }
+    }
+
+    free(socketDesc);
+    close(s);
+    return NULL;
+}
+
+void *recvMessages(void *socketDesc) {
+    const fd s = *(fd *) socketDesc;
+    char buf[BUFFER_SIZE];
+
+    while (1) {
+        // Receive message from server
+        const int bytesRead = recv(s, buf, BUFFER_SIZE, 0);
+        if (bytesRead <= 0) {
+            printf("Server disconnected.\n");
+            break;
+        }
+
+        // Null-terminate the received message and print it
+        buf[bytesRead] = '\0';
+        printf("%s\n", buf);
+    }
+
+    free(socketDesc);
+    close(s);
+    return NULL;
 }
