@@ -8,10 +8,12 @@ include_directories(include)
 
 set(SERVER_RESOURCES
         src/server.c
+        src/utils.c
 )
 
 set(CLIENT_RESOURCES
         src/client.c
+        src/utils.c
 )
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/build)
