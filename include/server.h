@@ -2,6 +2,11 @@
 #define SERVER_H
 #include <common.h>
 
+struct Client {
+    char name[BUFFER_SIZE];
+    fd client_fd;
+};
+
 void *askForInput(void *arg);
 
 void handleExit();
@@ -12,8 +17,8 @@ void *threadHandleClient(void *arg);
 
 void handleClient(const fd client_fd);
 
-void broadcastMessage(const char *message)
+void broadcastMessage(const struct Request *req);
 
-void broadcastMessageExcludeSender(const char *message, const fd client_fd);
+void broadcastMessageExcludeSender(const struct Request *req, const fd client_fd);
 
 #endif //SERVER_H

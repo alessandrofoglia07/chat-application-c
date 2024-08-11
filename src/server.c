@@ -8,9 +8,10 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
+#include <utils.h>
 
 int activeClientsCount = 0;
-fd activeClients[MAX_CONNECTIONS];
+struct Client activeClients[MAX_CONNECTIONS];
 pthread_mutex_t clientsMutex = PTHREAD_MUTEX_INITIALIZER;
 
 int main() {
@@ -89,7 +90,7 @@ int main() {
 void removeClient(const fd client_fd) {
     int index = -1;
     for (int i = 0; i < activeClientsCount; i++) {
-        if (activeClients[i] == client_fd) {
+        if (activeClients[i].client_fd == client_fd) {
             index = i;
             break;
         }
@@ -102,18 +103,18 @@ void removeClient(const fd client_fd) {
     }
 }
 
-void broadcastMessage(const char *message) {
+void broadcastMessage(const struct Request *req) {
     for (int i = 0; i < activeClientsCount; i++) {
-        send(activeClients[i], message, strlen(message), 0);
+        sendRequest(activeClients[i].client_fd, req);
     }
 }
 
-void broadcastMessageExcludeSender(const char *message, const fd client_fd) {
+void broadcastMessageExcludeSender(const struct Request *req, const fd client_fd) {
     for (int i = 0; i < activeClientsCount; i++) {
-        if (activeClients[i] == client_fd) {
+        if (activeClients[i].client_fd == client_fd) {
             continue;
         }
-        send(activeClients[i], message, strlen(message), 0);
+        sendRequest(activeClients[i].client_fd, req);
     }
 }
 
@@ -125,18 +126,46 @@ void *threadHandleClient(void *arg) {
 }
 
 void handleClient(const fd client_fd) {
+    struct Request req;
+
+    // first message is for the client to set their name
+    recvRequest(client_fd, &req);
+
+    // check if name is already taken
+    int clientExists = 0;
+    for (int i = 0; i < activeClientsCount; i++) {
+        if (req.name == activeClients[i].name) {
+            clientExists = 1;
+            break;
+        }
+    }
+
+    // if client exists or the message is not "init", send a message to the client and return
+    if (clientExists || strcmp(req.message, "init") != 0) {
+        snprintf(req.message, MESSAGE_SIZE, "Server: Client %s already exists. Please choose another name",
+                 req.name);
+        strcpy(req.name, "Server");
+        sendRequest(client_fd, &req);
+        close(client_fd);
+        return;
+    }
+
+    struct Client client;
+    strcpy(client.name, req.name);
+    client.client_fd = client_fd;
+
     pthread_mutex_lock(&clientsMutex);
-    activeClients[activeClientsCount++] = client_fd;
+    activeClients[activeClientsCount++] = client;
     pthread_mutex_unlock(&clientsMutex);
 
-    // another scope to avoid using the same variable name
-    char message[BUFFER_SIZE * 2], buf[BUFFER_SIZE];
-    snprintf(message, BUFFER_SIZE * 2, "Server: Client %d has joined the chat", client_fd);
-    printf("Client %d has joined the chat.\n", client_fd);
-    broadcastMessageExcludeSender(message, client_fd);
+    // if initial request is good, broadcast that the client has joined
+    strcpy(req.name, "Server");
+    snprintf(req.message, MESSAGE_SIZE, "Client %s has joined the chat", req.name);
+    printf("%s\n", req.message);
+    broadcastMessageExcludeSender(&req, client_fd);
 
     while (1) {
-        const int bytes_read = recv(client_fd, buf, BUFFER_SIZE, 0);
+        const int bytes_read = recvRequest(client_fd, &req);
         if (bytes_read <= 0) {
             if (bytes_read == 0) {
                 // client disconnected
@@ -147,10 +176,8 @@ void handleClient(const fd client_fd) {
             break;
         }
 
-        buf[bytes_read] = '\0';
-        snprintf(message, BUFFER_SIZE * 2, "Client %d: %s", client_fd, buf);
-        printf("%s\n", message);
-        broadcastMessageExcludeSender(message, client_fd);
+        printf("%s\n", req.message);
+        broadcastMessageExcludeSender(&req, client_fd);
     }
 
     pthread_mutex_lock(&clientsMutex);
@@ -159,14 +186,19 @@ void handleClient(const fd client_fd) {
     pthread_mutex_unlock(&clientsMutex);
 
     // notify other clients that this client has left
-    snprintf(message, 255, "Server: Client %d has left the chat", client_fd);
-    broadcastMessageExcludeSender(message, client_fd);
+    strcpy(req.name, "Server");
+    snprintf(req.message, MESSAGE_SIZE, "Server: Client %s has left the chat", client.name);
+    broadcastMessageExcludeSender(&req, client_fd);
 
     close(client_fd);
 }
 
 void handleExit() {
-    broadcastMessage("Server: The server is shutting down\n");
+    const struct Request req = {
+        .name = "Server",
+        .message = "The server is shutting down"
+    };
+    broadcastMessage(&req);
     exit(0);
 }
 
@@ -185,11 +217,17 @@ void *askForInput(void *arg) {
             input[strlen(input) - 1] = '\0';
         }
 
-        if (strcmp(input, "/quit") == 0) {
+        if (strcmp(input, "/send") == 0) {
+            struct Request req;
+            strcpy(req.name, "Server");
+            printf("Enter your message: ");
+            fgets(req.message, MESSAGE_SIZE, stdin);
+            broadcastMessage(&req);
+        } else if (strcmp(input, "/quit") == 0) {
             handleExit();
         } else if (strcmp(input, "/help") == 0) {
             handleHelp();
-        } else {
+        } else if (input[0] == '/') {
             printf("Unknown command: %s\n", input);
         }
     }

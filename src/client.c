@@ -1,4 +1,5 @@
 #include "client.h"
+#include <utils.h>
 #include <common.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -9,7 +10,14 @@
 #include <string.h>
 #include <unistd.h>
 
+
+char name[BUFFER_SIZE];
+
 int main() {
+    printf("Enter name: ");
+    fgets(name, BUFFER_SIZE, stdin);
+    name[strcspn(name, "\n")] = '\0';
+
     const fd clientSocket = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in serverAddr = {
         .sin_family = AF_INET,
@@ -20,6 +28,13 @@ int main() {
     };
 
     connect(clientSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr));
+
+    struct Request initReq;
+
+    strcpy(initReq.name, name);
+    strcpy(initReq.message, "init");
+
+    sendRequest(clientSocket, &initReq);
 
     pthread_t sendThread, recvThread;
 
@@ -57,10 +72,10 @@ void *sendMessages(void *socketDesc) {
     const fd s = *(fd *) socketDesc;
 
     while (1) {
-        char message[BUFFER_SIZE];
+        char message[MESSAGE_SIZE];
 
         // read message from user
-        fgets(message, BUFFER_SIZE, stdin);
+        fgets(message, MESSAGE_SIZE, stdin);
         message[strcspn(message, "\n")] = '\0';
 
         // exit the loop if the user types "exit"
@@ -69,28 +84,29 @@ void *sendMessages(void *socketDesc) {
             exit(0);
         }
 
+        struct Request req;
+
+        strcpy(req.name, name);
+        strcpy(req.message, message);
+
         // send message to server
-        if (send(s, message, strlen(message), 0) < 0) {
-            printf("-- Failed to send message\n");
-        }
+        sendRequest(s, &req);
     }
 }
 
 void *recvMessages(void *socketDesc) {
     const fd s = *(fd *) socketDesc;
-    char buf[BUFFER_SIZE];
+    struct Request req;
 
     while (1) {
         // Receive message from server
-        const int bytesRead = recv(s, buf, BUFFER_SIZE, 0);
-        if (bytesRead <= 0) {
-            printf("-- Server disconnected.\n");
-            break;
+        const int bytesRead = recvRequest(s, &req);
+        if (bytesRead == 0) {
+            printf("-- Server disconnected\n");
+            exit(0);
         }
 
-        // Null-terminate the received message and print it
-        buf[bytesRead] = '\0';
-        printf("%s\n", buf);
+        printf("%s: %s\n", req.name, req.message);
     }
 
     return NULL;

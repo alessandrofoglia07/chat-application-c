@@ -2,6 +2,9 @@
 #define CLIENT_H
 
 #define SERVER_ADDR "127.0.0.1"
+#include <common.h>
+
+extern char name[BUFFER_SIZE];
 
 void *sendMessages(void *socketDesc);
 
