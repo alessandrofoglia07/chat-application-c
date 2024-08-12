@@ -9,18 +9,18 @@ void serialize(const struct Request *req, char *buf) {
     // copy "name" into buf
     memcpy(buf, req->name, BUFFER_SIZE);
     // copy "message" into buf
-    memcpy(buf, req->message, MESSAGE_SIZE);
+    memcpy(buf + BUFFER_SIZE, req->message, MESSAGE_SIZE);
 }
 
 void deserialize(const char *buf, struct Request *req) {
     // copy "name" from buf
     memcpy(req->name, buf, BUFFER_SIZE);
     // copy "message" from buf
-    memcpy(req->message, buf, MESSAGE_SIZE);
+    memcpy(req->message, buf + BUFFER_SIZE, MESSAGE_SIZE);
 }
 
 void sendRequest(const fd s, const struct Request *req) {
-    char buf[BUFFER_SIZE + MESSAGE_SIZE];
+    char buf[sizeof(struct Request)];
     serialize(req, buf);
 
     if (send(s, buf, sizeof(buf), 0) < 0) {
@@ -30,7 +30,7 @@ void sendRequest(const fd s, const struct Request *req) {
 }
 
 int recvRequest(const fd s, struct Request *req) {
-    char buf[BUFFER_SIZE + MESSAGE_SIZE];
+    char buf[sizeof(struct Request)];
 
     int bytes_received;
 

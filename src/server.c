@@ -134,7 +134,7 @@ void handleClient(const fd client_fd) {
     // check if name is already taken
     int clientExists = 0;
     for (int i = 0; i < activeClientsCount; i++) {
-        if (req.name == activeClients[i].name) {
+        if (strcmp(req.name, activeClients[i].name) == 0) {
             clientExists = 1;
             break;
         }
@@ -142,17 +142,21 @@ void handleClient(const fd client_fd) {
 
     // if client exists or the message is not "init", send a message to the client and return
     if (clientExists || strcmp(req.message, "init") != 0) {
-        snprintf(req.message, MESSAGE_SIZE, "Server: Client %s already exists. Please choose another name",
+        snprintf(req.message, MESSAGE_SIZE,
+                 "Access Denied. Client %s already exists. Please choose another name.",
                  req.name);
         strcpy(req.name, "Server");
         sendRequest(client_fd, &req);
         close(client_fd);
         return;
     }
-
     struct Client client;
     strcpy(client.name, req.name);
     client.client_fd = client_fd;
+
+    strcpy(req.name, "Server");
+    strcpy(req.message, "Access Granted.");
+    sendRequest(client_fd, &req);
 
     pthread_mutex_lock(&clientsMutex);
     activeClients[activeClientsCount++] = client;
@@ -160,7 +164,7 @@ void handleClient(const fd client_fd) {
 
     // if initial request is good, broadcast that the client has joined
     strcpy(req.name, "Server");
-    snprintf(req.message, MESSAGE_SIZE, "Client %s has joined the chat", req.name);
+    snprintf(req.message, MESSAGE_SIZE, "Client %s has joined the chat", client.name);
     printf("%s\n", req.message);
     broadcastMessageExcludeSender(&req, client_fd);
 
@@ -169,14 +173,14 @@ void handleClient(const fd client_fd) {
         if (bytes_read <= 0) {
             if (bytes_read == 0) {
                 // client disconnected
-                printf("Client %d has left the chat.\n", client_fd);
+                printf("Client %s - %d has left the chat.\n", client.name, client_fd);
             } else {
                 perror("recv");
             }
             break;
         }
 
-        printf("%s\n", req.message);
+        printf("%s: %s\n", req.name, req.message);
         broadcastMessageExcludeSender(&req, client_fd);
     }
 
@@ -205,6 +209,7 @@ void handleExit() {
 void handleHelp() {
     printf("Available commands:\n");
     printf("  /help - show this message\n");
+    printf("  /send - send a message to all clients\n");
     printf("  /quit - exit the program\n");
 }
 

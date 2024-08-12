@@ -14,10 +14,6 @@
 char name[BUFFER_SIZE];
 
 int main() {
-    printf("Enter name: ");
-    fgets(name, BUFFER_SIZE, stdin);
-    name[strcspn(name, "\n")] = '\0';
-
     const fd clientSocket = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in serverAddr = {
         .sin_family = AF_INET,
@@ -31,10 +27,26 @@ int main() {
 
     struct Request initReq;
 
-    strcpy(initReq.name, name);
-    strcpy(initReq.message, "init");
+    // first request for the client to enter their name
+    while (1) {
+        printf("Enter name: ");
+        fgets(name, BUFFER_SIZE, stdin);
+        name[strcspn(name, "\n")] = '\0';
 
-    sendRequest(clientSocket, &initReq);
+
+        strcpy(initReq.name, name);
+        strcpy(initReq.message, "init");
+
+        sendRequest(clientSocket, &initReq);
+
+        recvRequest(clientSocket, &initReq);
+
+        if (strcmp(initReq.message, "Access Granted.") == 0) {
+            break;
+        }
+
+        printf("%s: %s\n", initReq.name, initReq.message);
+    }
 
     pthread_t sendThread, recvThread;
 
@@ -76,6 +88,7 @@ void *sendMessages(void *socketDesc) {
 
         // read message from user
         fgets(message, MESSAGE_SIZE, stdin);
+
         message[strcspn(message, "\n")] = '\0';
 
         // exit the loop if the user types "exit"
@@ -88,6 +101,9 @@ void *sendMessages(void *socketDesc) {
 
         strcpy(req.name, name);
         strcpy(req.message, message);
+
+        // Print the formatted message before sending
+        printf("%s: %s\n", req.name, req.message);
 
         // send message to server
         sendRequest(s, &req);
