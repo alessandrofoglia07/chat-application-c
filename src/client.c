@@ -10,11 +10,10 @@
 #include <string.h>
 #include <unistd.h>
 
-
 char name[BUFFER_SIZE];
 
 int main() {
-    const fd clientSocket = socket(AF_INET, SOCK_STREAM, 0);
+    fd clientSocket = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in serverAddr = {
         .sin_family = AF_INET,
         .sin_port = htons(PORT),
@@ -33,7 +32,6 @@ int main() {
         fgets(name, BUFFER_SIZE, stdin);
         name[strcspn(name, "\n")] = '\0';
 
-
         strcpy(initReq.name, name);
         strcpy(initReq.message, "init");
 
@@ -42,10 +40,15 @@ int main() {
         recvRequest(clientSocket, &initReq);
 
         if (strcmp(initReq.message, "Access Granted.") == 0) {
+            recvRequest(clientSocket, &initReq);
+            printMessage(&initReq);
             break;
         }
 
-        printf("%s: %s\n", initReq.name, initReq.message);
+        printMessage(&initReq);
+
+        clientSocket = socket(AF_INET, SOCK_STREAM, 0);
+        connect(clientSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr));
     }
 
     pthread_t sendThread, recvThread;
@@ -93,7 +96,7 @@ void *sendMessages(void *socketDesc) {
 
         // exit the loop if the user types "exit"
         if (strcmp(message, "exit") == 0) {
-            printf("-- Exiting...\n");
+            printf("-- Exiting\n");
             exit(0);
         }
 
@@ -103,7 +106,7 @@ void *sendMessages(void *socketDesc) {
         strcpy(req.message, message);
 
         // Print the formatted message before sending
-        printf("%s: %s\n", req.name, req.message);
+        printMessage(&req);
 
         // send message to server
         sendRequest(s, &req);
@@ -118,11 +121,11 @@ void *recvMessages(void *socketDesc) {
         // Receive message from server
         const int bytesRead = recvRequest(s, &req);
         if (bytesRead == 0) {
-            printf("-- Server disconnected\n");
+            printf("-- Disconnected\n");
             exit(0);
         }
 
-        printf("%s: %s\n", req.name, req.message);
+        printMessage(&req);
     }
 
     return NULL;

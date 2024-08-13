@@ -162,6 +162,9 @@ void handleClient(const fd client_fd) {
     activeClients[activeClientsCount++] = client;
     pthread_mutex_unlock(&clientsMutex);
 
+    sprintf(req.message, "You have joined the chat. There are %d clients online.", activeClientsCount);
+    sendRequest(client_fd, &req);
+
     // if initial request is good, broadcast that the client has joined
     strcpy(req.name, "Server");
     snprintf(req.message, MESSAGE_SIZE, "Client %s has joined the chat", client.name);
@@ -173,14 +176,14 @@ void handleClient(const fd client_fd) {
         if (bytes_read <= 0) {
             if (bytes_read == 0) {
                 // client disconnected
-                printf("Client %s - %d has left the chat.\n", client.name, client_fd);
+                printf("Client %s (fd: %d) has left the chat.\n", client.name, client_fd);
             } else {
                 perror("recv");
             }
             break;
         }
 
-        printf("%s: %s\n", req.name, req.message);
+        printMessage(&req);
         broadcastMessageExcludeSender(&req, client_fd);
     }
 
@@ -191,7 +194,7 @@ void handleClient(const fd client_fd) {
 
     // notify other clients that this client has left
     strcpy(req.name, "Server");
-    snprintf(req.message, MESSAGE_SIZE, "Server: Client %s has left the chat", client.name);
+    snprintf(req.message, MESSAGE_SIZE, "Client %s has left the chat", client.name);
     broadcastMessageExcludeSender(&req, client_fd);
 
     close(client_fd);
@@ -210,6 +213,7 @@ void handleHelp() {
     printf("Available commands:\n");
     printf("  /help - show this message\n");
     printf("  /send - send a message to all clients\n");
+    printf("  /clear - clear the screen\n");
     printf("  /quit - exit the program\n");
 }
 
@@ -225,9 +229,17 @@ void *askForInput(void *arg) {
         if (strcmp(input, "/send") == 0) {
             struct Request req;
             strcpy(req.name, "Server");
-            printf("Enter your message: ");
+            printf("Enter your message (enter \"/exit\" to exit): ");
             fgets(req.message, MESSAGE_SIZE, stdin);
+            req.message[strcspn(req.message, "\n")] = '\0';
+            if (strcmp(req.message, "/exit") == 0) {
+                continue;
+            }
             broadcastMessage(&req);
+            printf("Message sent to all clients\n");
+        } else if (strcmp(input, "/clear") == 0) {
+            system("clear");
+            printf("Server listening at port %d\n", PORT);
         } else if (strcmp(input, "/quit") == 0) {
             handleExit();
         } else if (strcmp(input, "/help") == 0) {

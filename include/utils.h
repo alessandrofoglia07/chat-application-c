@@ -2,6 +2,8 @@
 #define UTILS_H
 #include <common.h>
 
+void printMessage(const struct Request *req);
+
 void serialize(const struct Request *req, char *buf);
 
 void deserialize(const char *buf, struct Request *req);

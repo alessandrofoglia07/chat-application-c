@@ -5,6 +5,10 @@
 #include <string.h>
 #include <sys/socket.h>
 
+void printMessage(const struct Request *req) {
+    printf("%s: %s\n", req->name, req->message);
+}
+
 void serialize(const struct Request *req, char *buf) {
     // copy "name" into buf
     memcpy(buf, req->name, BUFFER_SIZE);
