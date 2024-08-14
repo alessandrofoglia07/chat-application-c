@@ -16,6 +16,7 @@ pthread_mutex_t clientsMutex = PTHREAD_MUTEX_INITIALIZER;
 
 int main() {
     signal(SIGINT, handleExit); // gracefully handle Ctrl+C
+    signal(SIGQUIT, handleExit); // gracefully handle quit signal
     const fd s = socket(AF_INET, SOCK_STREAM, 0);
 
     if (s < 0) {
@@ -34,7 +35,7 @@ int main() {
     if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0) {
         perror("Setsockopt failed");
         close(s);
-        exit(EXIT_FAILURE);
+        return 1;
     }
 
     if (bind(s, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
@@ -140,8 +141,8 @@ void handleClient(const fd client_fd) {
         }
     }
 
-    // if client exists or the message is not "init", send a message to the client and return
-    if (clientExists || strcmp(req.message, "init") != 0) {
+    // if client exists or the message is not DEFAULT_INIT_CONNECTION_MESSAGE, send a message to the client and return
+    if (clientExists || strcmp(req.message, DEFAULT_INIT_CONNECTION_MESSAGE) != 0) {
         snprintf(req.message, MESSAGE_SIZE,
                  "Access Denied. Client %s already exists. Please choose another name.",
                  req.name);

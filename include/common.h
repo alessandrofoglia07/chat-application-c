@@ -5,6 +5,7 @@
 #define MAX_CONNECTIONS 10
 #define BUFFER_SIZE 256
 #define MESSAGE_SIZE BUFFER_SIZE * 2
+#define DEFAULT_INIT_CONNECTION_MESSAGE "init"
 
 typedef int fd;
 

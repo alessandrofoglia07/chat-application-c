@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/socket.h>
 
 void printMessage(const struct Request *req) {
@@ -29,6 +30,7 @@ void sendRequest(const fd s, const struct Request *req) {
 
     if (send(s, buf, sizeof(buf), 0) < 0) {
         perror("send");
+        close(s);
         exit(1);
     }
 }
@@ -40,6 +42,7 @@ int recvRequest(const fd s, struct Request *req) {
 
     if ((bytes_received = recv(s, buf, sizeof(buf), 0)) < 0) {
         perror("recv");
+        close(s);
         exit(1);
     }
 

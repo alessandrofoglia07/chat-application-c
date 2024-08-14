@@ -14,6 +14,10 @@ char name[BUFFER_SIZE];
 
 int main() {
     fd clientSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (clientSocket < 0) {
+        perror("socket");
+        return 1;
+    }
     struct sockaddr_in serverAddr = {
         .sin_family = AF_INET,
         .sin_port = htons(PORT),
@@ -22,7 +26,11 @@ int main() {
         }
     };
 
-    connect(clientSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr));
+    if (connect(clientSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr)) < 0) {
+        perror("connect");
+        close(clientSocket);
+        return 1;
+    }
 
     struct Request initReq;
 
@@ -33,7 +41,7 @@ int main() {
         name[strcspn(name, "\n")] = '\0';
 
         strcpy(initReq.name, name);
-        strcpy(initReq.message, "init");
+        strcpy(initReq.message, DEFAULT_INIT_CONNECTION_MESSAGE);
 
         sendRequest(clientSocket, &initReq);
 
@@ -47,15 +55,27 @@ int main() {
 
         printMessage(&initReq);
 
+        if (clientSocket > 0) {
+            close(clientSocket);
+        }
+
         clientSocket = socket(AF_INET, SOCK_STREAM, 0);
-        connect(clientSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr));
+        if (clientSocket < 0) {
+            perror("socket");
+            return 1;
+        }
+        if (connect(clientSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr)) < 0) {
+            perror("connect");
+            close(clientSocket);
+            return 1;
+        }
     }
 
     pthread_t sendThread, recvThread;
 
     fd *arg = malloc(sizeof(clientSocket));
     if (arg == NULL) {
-        perror("-- Failed to allocate memory for client_fd");
+        perror("Failed to allocate memory for client_fd");
         return 1;
     }
     *arg = clientSocket;
@@ -95,7 +115,7 @@ void *sendMessages(void *socketDesc) {
         message[strcspn(message, "\n")] = '\0';
 
         // exit the loop if the user types "exit"
-        if (strcmp(message, "exit") == 0) {
+        if (strcmp(message, EXIT_COMMAND) == 0) {
             printf("-- Exiting\n");
             exit(0);
         }

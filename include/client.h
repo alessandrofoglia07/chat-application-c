@@ -1,6 +1,7 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
+#define EXIT_COMMAND "exit"
 #define SERVER_ADDR "127.0.0.1"
 #include <common.h>
 
