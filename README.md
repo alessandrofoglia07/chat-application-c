@@ -8,19 +8,20 @@
 <p align="center">
   <a href="#key-features">Key Features</a> •
   <a href="#how-to-use">How To Use</a> •
+  <a href="#demo">Demo</a> •
   <a href="#license">License</a>
 </p>
 
 ## Key Features
 
-- **Multi-Client Support**: Allows multiple clients to connect and communicate with each other simultaneously.
-- **Real-Time Messaging**: Enables real-time message exchange between clients.
-- **Threaded Client Handling**: Utilizes multi-threading to handle multiple clients efficiently.
-- **Command Support**: Provides built-in commands such as /help, /send, /clear, and /quit for enhanced user interaction.
-- **Broadcast Messaging**: Supports broadcasting messages to all connected clients or excluding the sender.
-- **Graceful Exit**: Allows clients to exit the chat gracefully by typing "exit".
-- **Error Handling**: Provides appropriate error messages and responses for invalid requests or missing files.
-- **Simple Setup**: Minimal dependencies and easy setup for running and testing the server and client locally.
+-   **Multi-Client Support**: Allows multiple clients to connect and communicate with each other simultaneously.
+-   **Real-Time Messaging**: Enables real-time message exchange between clients.
+-   **Threaded Client Handling**: Utilizes multi-threading to handle multiple clients efficiently.
+-   **Command Support**: Provides built-in commands such as /help, /send, /clear, and /quit for enhanced user interaction.
+-   **Broadcast Messaging**: Supports broadcasting messages to all connected clients or excluding the sender.
+-   **Graceful Exit**: Allows clients to exit the chat gracefully by typing "exit".
+-   **Error Handling**: Provides appropriate error messages and responses for invalid requests or missing files.
+-   **Simple Setup**: Minimal dependencies and easy setup for running and testing the server and client locally.
 
 ## How To Use
 
@@ -61,6 +62,12 @@ $ cmake --build ./cmake-build-debug --target client -- -j 6
 # Run the client
 $ ./build/client
 ```
+
+## Demo
+
+<a href="https://github.com/alessandrofoglia07/chat-application-c/raw/main/.github/C-Chat-App-Demo.mp4">
+  <video src="https://github.com/alessandrofoglia07/chat-application-c/raw/main/.github/C-Chat-App-Demo.mp4"></video>
+</a>
 
 ## License
 
