@@ -14,14 +14,14 @@
 
 ## Key Features
 
--   **Multi-Client Support**: Allows multiple clients to connect and communicate with each other simultaneously.
--   **Real-Time Messaging**: Enables real-time message exchange between clients.
--   **Threaded Client Handling**: Utilizes multi-threading to handle multiple clients efficiently.
--   **Command Support**: Provides built-in commands such as /help, /send, /clear, and /quit for enhanced user interaction.
--   **Broadcast Messaging**: Supports broadcasting messages to all connected clients or excluding the sender.
--   **Graceful Exit**: Allows clients to exit the chat gracefully by typing "exit".
--   **Error Handling**: Provides appropriate error messages and responses for invalid requests or missing files.
--   **Simple Setup**: Minimal dependencies and easy setup for running and testing the server and client locally.
+- **Multi-Client Support**: Allows multiple clients to connect and communicate with each other simultaneously.
+- **Real-Time Messaging**: Enables real-time message exchange between clients.
+- **Threaded Client Handling**: Utilizes multi-threading to handle multiple clients efficiently.
+- **Command Support**: Provides built-in commands such as /help, /send, /clear, and /quit for enhanced user interaction.
+- **Broadcast Messaging**: Supports broadcasting messages to all connected clients or excluding the sender.
+- **Graceful Exit**: Allows clients to exit the chat gracefully by typing "exit".
+- **Error Handling**: Provides appropriate error messages and responses for invalid requests or missing files.
+- **Simple Setup**: Minimal dependencies and easy setup for running and testing the server and client locally.
 
 ## How To Use
 
@@ -43,7 +43,7 @@ You can run the server like this:
 
 ```bash
 # Build the server
-$ cmake --build ./cmmake-build-debug --target server -- -j 6
+$ cmake --build ./cmake-build-debug --target server -- -j 6
 # Run the server
 $ ./build/server
 ```
